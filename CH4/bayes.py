@@ -48,8 +48,6 @@ def trainNB0(trainMatrix,trainCategory):
     return p0Vect,p1Vect,pAbusive
     
 def classifyNB(vec2Classify,p0Vec,p1Vec,pClass1):
-    print(vec2Classify)
-    print(p1Vec)
     p1 = sum(vec2Classify*p1Vec) + np.log(pClass1)    # This testing sentense, the P(W1|C1)*P(W2|C1)....
     p0 = sum(vec2Classify*p0Vec) + np.log(1.0 - pClass1)
     if p1>p0:
@@ -96,7 +94,61 @@ def spamTest():
         fullText.extend(wordList)
         classList.append(0)    
     vocabList = createVocabList(docList)
-    trainingSet = range(50)
+    trainingSet = [i for i in range(50)]      
     testSet = []
+    for i in range(10):            # choose the random data set for testing
+        randIndex = int(np.random.uniform(0,len(trainingSet)))
+        testSet.append(trainingSet[randIndex])
+        del(trainingSet[randIndex])
+    trainMat=[]
+    trainClasses=[]
+    for docIndex in trainingSet:              #trainning from the last trainning set database 
+        trainMat.append(setOfWord2Vec(vocabList,docList[docIndex])) 
+        trainClasses.append(classList[docIndex])
+    p0V,p1V,pSpam = trainNB0(np.array(trainMat),np.array(trainClasses))
+    errorCount = 0 
+    for docIndex in testSet:
+        wordVector = setOfWord2Vec(vocabList,docList[docIndex])
+        if classifyNB(np.array(wordVector),p0V,p1V,pSpam) != classList[docIndex]:
+            errorCount+=1
+    print('the error rate is: ', float(errorCount)/len(testSet))
         
-print(spamTest())
+def calcMostFreq(vocabList,fullText):
+    import operator
+    freqDict = {}
+    for token in vocabList:
+        freqDict[token] = fullText.count(token)
+    sortedFreq = sorted(freqDict.items(),key=operator.itemgetter(1),reversed=True)    
+    return sortedFreq[:30]
+
+def localWords(feed1,feed0):
+    import feedparser
+    docList = []
+    classList = []
+    fullText = []
+    minLen = min(len(feed1['entries']),len(feed0['entries']))
+    for i in range(minLen):
+        wordList = textParse(feed1['entries'][i]['summary'])
+        docList.append(wordList)
+        fullText.extend(wordList)
+        classList.append(1)
+        wordList = textParse(feed0['entries'][i]['summary'])
+        docList.append(wordList)
+        fullText.extend(wordList)
+        classList.append(0)
+    vocabList = createVocabList(docList)
+    top30Words = calcMostFreq(vocabList,fullText)
+    for pairW in top30Words:
+        if pairW[0] in vocabList:
+            vocabList.remove(pairW[0])
+    trainingSet = [ i for i in range(2*minLen)]
+    testSet = []
+    for i in range(20):
+        randIndex = int(np.random.uniform(0,len(trainingSet)))
+        testSet.append(trainingSet[randIndex])
+        del(trainingSet[randIndex])
+    trainMat = []
+    trainClasses = []
+    
+    
+        
